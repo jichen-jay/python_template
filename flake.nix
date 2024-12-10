@@ -72,18 +72,17 @@
               shellHook = ''
                 eval "$(direnv hook $0)"
 
+                export PATH=${myFhs}/bin:$PATH
+
                 # Create virtual environment using uv from myFhs
                 if [[ ! -d .venv ]]; then
                   echo "Creating virtual environment..."
-                  ${pkgs.uv}/bin/uv venv .venv
+                  uv venv .venv
                   echo ".venv" >> .gitignore
                 fi
 
                 # Activate the virtual environment
                 source .venv/bin/activate
-
-                # Put the FHS environment's bin directory at the front of the PATH
-                export PATH=${myFhs}/bin:$PATH
               '';
             };
         }
