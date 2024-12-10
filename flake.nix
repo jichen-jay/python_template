@@ -13,21 +13,19 @@
         let
           pkgs = import nixpkgs {
             inherit system;
-            config = {
-              allowUnfree = true;
-            };
+            config.allowUnfree = true;
           };
-          # Create an FHS environment specifically for Python
-          python-fhs-env = pkgs.buildFHSEnv {
-            name = "python-fhs-env";
 
-            # Install Python and uv into the FHS environment
-            targetPkgs = pkgs: [ pkgs.uv ];
+          # Step 1: Build the FHS environment (similar to your myFhs)
+          myFhs = pkgs.buildFHSEnv {
+            name = "fhs-python-env";
+            targetPkgs = pkgs: (with pkgs; [
+              uv
+            ]);
 
+            # Set LD_LIBRARY_PATH for the FHS Python
             profileHook = ''
-              export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.bzip2}/lib:${pkgs.libffi}/lib:${pkgs.ncurses}/lib:${pkgs.readline}/lib:${pkgs.xz}/lib
-
-              export PATH=${pkgs.stdenv.cc.cc.lib}/lib:$PATH
+              export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.bzip2}/lib:${pkgs.libffi}/lib:${pkgs.ncurses}/lib:${pkgs.readline}/lib:${pkgs.xz}/lib:$LD_LIBRARY_PATH
             '';
 
             runScript = "bash";
@@ -35,58 +33,60 @@
 
         in
         {
-          packages.python-fhs = python-fhs-env;
+          packages.myFhs = myFhs;
           packages.direnv = pkgs.direnv;
+          packages.default = myFhs;
 
           devShells.default =
             let
-              libPath = pkgs.lib.makeLibraryPath [
-                pkgs.stdenv.cc.cc
-                pkgs.zlib
-                pkgs.openssl
-                pkgs.bzip2
-                pkgs.libffi
-                pkgs.ncurses
-                pkgs.readline
-                pkgs.xz
+              # Libraries for nix-ld
+              ldLibraries = with pkgs; [
+                stdenv.cc.cc
+                zlib
+                openssl
+                bzip2
+                libffi
+                ncurses
+                readline
+                xz
               ];
-              fhsPython = python-fhs-env;
+
+              # Generate LD_LIBRARY_PATH for nix-ld
+              libPath = pkgs.lib.makeLibraryPath ldLibraries;
+
             in
             pkgs.mkShell {
-              # Set up nix-ld
+              # Use the FHS environment in the devShell
+              inputsFrom = [ myFhs ];
+
+              # Set up nix-ld for dynamically linked executables inside .venv
               LD_LIBRARY_PATH = libPath;
-              # Inherit the FHS environment
-              inputsFrom = [ fhsPython ];
-              # Bring in nix-ld
+
               nativeBuildInputs = [
-                nix-ld.packages.${system}.nix-ld
                 pkgs.direnv
+                nix-ld.packages.${system}.nix-ld
               ];
 
               shellHook = ''
                 eval "$(direnv hook $0)"
 
-                # Set up the virtual environment inside the FHS environment
+                # Create virtual environment using uv from myFhs
                 if [[ ! -d .venv ]]; then
                   echo "Creating virtual environment..."
-                  # Use uv from the FHS environment to create the virtual environment
-                  uv venv .venv
-
+                  ${myFhs}/bin/uv venv .venv
                   echo ".venv" >> .gitignore
-                  echo "Virtual environment created in .venv"
                 fi
 
-                # Source to activate, but then...
+                # Activate the virtual environment
                 source .venv/bin/activate
-                # Unset VIRTUAL_ENV and remove .venv/bin from PATH
-                unset VIRTUAL_ENV
-                export PATH=$(echo "$PATH" | sed -E "s|${builtins.replaceStrings [":"] [" "] ./.venv/bin}||")
-                # Make sure the FHS environment's python takes priority on PATH
-                export PATH=${fhsPython}/bin:$PATH
+
+                # Put the FHS environment's bin directory at the front of the PATH
+                export PATH=${myFhs}/bin:$PATH
               '';
             };
         }
       ) // {
+      # Template for easy initialization
       templates = {
         python-fhs-uv-direnv = {
           path = ./.;
