@@ -51,19 +51,19 @@
             ];
 
           };
-        };
 
-      # Template definition
-      templates = {
-        python-fhs-uv-direnv = {
-          path = ./.;
-          description = "Python development environment with FHS, uv, and direnv";
-          welcomeText = ''
-            # Python Development Environment (FHS, uv, direnv)
-          '';
-        };
+          # Template definition moved inside perSystem
+          templates = {
+            python-fhs-uv-direnv = {
+              path = ./.;
+              description = "Python development environment with FHS, uv, and direnv";
+              welcomeText = ''
+                # Python Development Environment (FHS, uv, direnv)
+              '';
+            };
 
-        default = self.templates.python-fhs-uv-direnv;
-      };
+            default = self.templates.python-fhs-uv-direnv;
+          };
+        };
     };
 }
