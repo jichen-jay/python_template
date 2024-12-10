@@ -57,5 +57,18 @@
               source .venv/bin/activate
             '';
           };
-        });
+        })
+    // {
+      # Templates
+      templates = {
+        python-fhs-uv-direnv = {
+          path = ./.;
+          description = "Python development environment with FHS, uv, and direnv";
+          welcomeText = ''
+            # Python Development Environment (FHS, uv, direnv)
+          '';
+        };
+        default = self.templates.python-fhs-uv-direnv;
+      };
+    }; # Add the missing closing brace
 }
