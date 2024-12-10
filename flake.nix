@@ -49,6 +49,7 @@
             # Other development tools
             packages = with pkgs; [
               uv
+              python-fhs-env
               # ... other tools
             ];
           };
