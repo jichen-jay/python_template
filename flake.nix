@@ -18,9 +18,8 @@
 
           # Step 1: Build the FHS environment (similar to your myFhs)
           myFhs = pkgs.buildFHSUserEnv {
-            name = "fhs-python-env";
+            name = "fhs-env";
             targetPkgs = pkgs: (with pkgs; [
-              python311
               uv
             ]);
 
@@ -65,8 +64,9 @@
               LD_LIBRARY_PATH = libPath;
 
               nativeBuildInputs = [
-                pkgs.direnv
+                pkgs.uv
                 nix-ld.packages.${system}.nix-ld
+                pkgs.direnv
               ];
 
               shellHook = ''
