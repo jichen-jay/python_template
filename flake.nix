@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    uv.url = "github:astral-sh/uv/v0.5.6"; # Use a specific version for better reproducibility
+    uv.url = "github:astral-sh/uv/0.5.6"; # Use a specific version for better reproducibility
     uv.inputs.nixpkgs.follows = "nixpkgs";
   };
 
