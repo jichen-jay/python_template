@@ -36,29 +36,36 @@
           packages.python-fhs = python-fhs-env;
           packages.uv = pkgs.uv;
           packages.direnv = pkgs.direnv;
-          packages.default = pkgs.writeShellScriptBin "init" ./init.sh;
 
           devShells.default = pkgs.mkShell {
+            # Use the FHS environment as the base
+            inputsFrom = [ python-fhs-env ];
+
+            # No need to add to `buildInputs` if the package is already in `targetPkgs`.
             buildInputs = [
               pkgs.direnv
-              python-fhs-env
-              pkgs.uv
             ];
+
             shellHook = ''
               eval "$(direnv hook $0)"
-              # Create the virtual environment using uv
+
+              # Create and set up the virtual environment if it doesn't exist.
               if [[ ! -d .venv ]]; then
                 echo "Creating virtual environment..."
+                # Use uv inside the FHS environment to create the venv
                 uv venv .venv
+
+                # Set up .gitignore
                 echo ".venv" >> .gitignore
+
+                echo "Virtual environment created in .venv"
               fi
 
-              # Activate the virtual environment
+              # Load the virtual environment
               source .venv/bin/activate
             '';
           };
-        })
-    // {
+        }) // {
       # Templates
       templates = {
         python-fhs-uv-direnv = {
