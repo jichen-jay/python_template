@@ -3,18 +3,19 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable"; # Consider pinning to a stable release
-    flake-parts.url = "github:hercules-ci/flake-parts";
     flake-utils.url = "github:numtide/flake-utils";
-    # uv.url = "github:astral-sh/uv/main"; # Not needed if using nixpkgs version
-    # uv.inputs.nixpkgs.follows = "nixpkgs"; # Not needed if using nixpkgs version
   };
 
-  outputs = { self, nixpkgs, flake-parts, ... } @ inputs:
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = [ "x86_64-linux" ]; # Specify your target systems
-
-      perSystem = { pkgs, system, lib, ... }:
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem
+      (system:
         let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+
+          # FHS Environment setup directly in flake.nix
           python-fhs-env = pkgs.buildFHSEnv {
             name = "python-fhs-env";
             targetPkgs = pkgs: (with pkgs; [
@@ -42,6 +43,7 @@
           packages.default = python-fhs-env;
 
           devShells.default = pkgs.mkShell {
+            # Inherit the FHS environment
             inputsFrom = [ python-fhs-env ];
 
             # Other development tools
@@ -49,21 +51,18 @@
               uv
               # ... other tools
             ];
-
           };
-
-          # Template definition moved inside perSystem
-          templates = {
-            python-fhs-uv-direnv = {
-              path = ./.;
-              description = "Python development environment with FHS, uv, and direnv";
-              welcomeText = ''
-                # Python Development Environment (FHS, uv, direnv)
-              '';
-            };
-
-            default = self.templates.python-fhs-uv-direnv;
-          };
+        }) // {
+      # Put the templates outside `eachDefaultSystem` to make it available to `nix flake init -t`
+      templates = {
+        python-fhs-uv-direnv = {
+          path = ./.;
+          description = "Python development environment with FHS, uv, and direnv";
+          welcomeText = ''
+            # Python Development Environment (FHS, uv, direnv)
+          '';
         };
+        default = self.templates.python-fhs-uv-direnv;
+      };
     };
 }
