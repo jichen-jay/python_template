@@ -1,71 +1,69 @@
 {
-  description = "Python Development Environment with PyTorch (CPU) and uv";
+  description = "Template for Python Development Environment (FHS, uv, direnv)";
 
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable"; # Consider pinning to a stable release
     flake-parts.url = "github:hercules-ci/flake-parts";
-    uv.url = "github:astral-sh/uv/0.5.6"; # Use a specific version for better reproducibility
-    uv.inputs.nixpkgs.follows = "nixpkgs";
+    flake-utils.url = "github:numtide/flake-utils";
+    # uv.url = "github:astral-sh/uv/main"; # Not needed if using nixpkgs version
+    # uv.inputs.nixpkgs.follows = "nixpkgs"; # Not needed if using nixpkgs version
   };
 
-  outputs =
-    { self
-    , nixpkgs
-    , flake-parts
-    , uv
-    , ...
-    } @ inputs:
+  outputs = { self, nixpkgs, flake-parts, ... } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      perSystem =
-        { pkgs
-        , lib
-        , system
-        , self'
-        , ...
-        }: {
-          _module.args.pkgs = import nixpkgs {
-            inherit system;
-            config = {
-              allowUnfree = true;
-            };
+      systems = [ "x86_64-linux" ]; # Specify your target systems
+
+      perSystem = { pkgs, system, lib, ... }:
+        let
+          python-fhs-env = pkgs.buildFHSEnv {
+            name = "python-fhs-env";
+            targetPkgs = pkgs: (with pkgs; [
+              python311
+              # (Optional) any other packages you need in the FHS environment
+            ]);
+
+            # Adjust library paths as needed. Also take suggestions from "nix-ld --list"
+            profileSetup = ''
+              export NIX_LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib
+              # Add other Linux-specific libraries
+              export NIX_LD_LIBRARY_PATH+=${pkgs.zlib}/lib
+              export NIX_LD_LIBRARY_PATH+=${pkgs.openssl}/lib
+              export NIX_LD_LIBRARY_PATH+=${pkgs.bzip2}/lib
+              export NIX_LD_LIBRARY_PATH+=${pkgs.libffi}/lib
+              export NIX_LD_LIBRARY_PATH+=${pkgs.ncurses}/lib
+              export NIX_LD_LIBRARY_PATH+=${pkgs.readline}/lib
+              export NIX_LD_LIBRARY_PATH+=${pkgs.xz}/lib
+            '';
+
+            runScript = "bash"; # Or your preferred shell
           };
+        in
+        {
+          packages.default = python-fhs-env;
 
           devShells.default = pkgs.mkShell {
+            inputsFrom = [ python-fhs-env ];
+
+            # Other development tools
             packages = with pkgs; [
-              python311
-              # Use uv package from the input
-              uv.packages.${system}.default
+              uv
+              # ... other tools
             ];
 
-            shellHook = ''
-              echo "Creating virtual environment..."
-              # Call uv through its binary path
-              ${uv.packages.${system}.default}/bin/uv venv .venv
-              echo "Activating virtual environment..."
-              source .venv/bin/activate
-              echo "Installing specific CPU-only PyTorch wheels..."
-              ${uv.packages.${system}.default}/bin/uv pip install https://download.pytorch.org/whl/cpu/torch-2.1.2%2Bcpu-cp311-cp311-linux_x86_64.whl
-              ${uv.packages.${system}.default}/bin/uv pip install https://download.pytorch.org/whl/cpu/torchvision-0.16.2%2Bcpu-cp311-cp311-linux_x86_64.whl
-              echo "Installing dependencies from requirements.txt (if any)..."
-              ${uv.packages.${system}.default}/bin/uv pip install -r requirements.txt || true
-              echo "Environment setup complete!"
-            '';
           };
         };
 
-      # Define templates
+      # Template definition
       templates = {
-        # General Python template
-        python-dev = {
+        python-fhs-uv-direnv = {
           path = ./.;
-          description = "Python development environment with PyTorch (CPU) and uv";
+          description = "Python development environment with FHS, uv, and direnv";
           welcomeText = ''
-            # Python Development Environment
+            # Python Development Environment (FHS, uv, direnv)
           '';
         };
 
-        # Default template (points to python-dev)
-        default = self.templates.python-dev;
+        default = self.templates.python-fhs-uv-direnv;
       };
     };
 }
