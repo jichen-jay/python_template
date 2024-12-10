@@ -68,7 +68,7 @@
               LD_LIBRARY_PATH = libPath;
 
               nativeBuildInputs = [
-                pkgs.python311
+                pkgs.python311Full
                 pkgs.uv
                 nix-ld.packages.${system}.nix-ld
                 pkgs.direnv
