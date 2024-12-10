@@ -16,24 +16,28 @@
             config.allowUnfree = true;
           };
 
-          # Step 1: Build the FHS environment (similar to your myFhs)
+          # FHS environment (only libraries, no Python)
           myFhs = pkgs.buildFHSUserEnv {
             name = "fhs-env";
-            targetPkgs = pkgs: (with pkgs; [
-              uv
-            ]);
-
-            # Set LD_LIBRARY_PATH for the FHS Python
+            targetPkgs = pkgs: with pkgs; [
+              # Only libraries required for a dynamically linked Python to run
+              stdenv.cc.cc.lib
+              zlib
+              openssl
+              bzip2
+              libffi
+              ncurses
+              readline
+              xz
+            ];
             profileHook = ''
               export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.bzip2}/lib:${pkgs.libffi}/lib:${pkgs.ncurses}/lib:${pkgs.readline}/lib:${pkgs.xz}/lib:$LD_LIBRARY_PATH
             '';
-
             runScript = "bash";
           };
 
         in
         {
-          # Expose the FHS environment as a package (optional)
           packages.myFhs = myFhs;
           packages.direnv = pkgs.direnv;
           packages.default = myFhs;
@@ -57,13 +61,14 @@
 
             in
             pkgs.mkShell {
-              # Use the FHS environment in the devShell
+              # Inherit FHS environment
               inputsFrom = [ myFhs ];
 
-              # Set up nix-ld for dynamically linked executables inside .venv
+              # Set up nix-ld
               LD_LIBRARY_PATH = libPath;
 
               nativeBuildInputs = [
+                pkgs.python311
                 pkgs.uv
                 nix-ld.packages.${system}.nix-ld
                 pkgs.direnv
@@ -71,23 +76,12 @@
 
               shellHook = ''
                 eval "$(direnv hook $0)"
-
+                # Add FHS environment to PATH
                 export PATH=${myFhs}/bin:$PATH
-
-                # Create virtual environment using uv from myFhs
-                if [[ ! -d .venv ]]; then
-                  echo "Creating virtual environment..."
-                  uv venv .venv
-                  echo ".venv" >> .gitignore
-                fi
-
-                # Activate the virtual environment
-                source .venv/bin/activate
               '';
             };
         }
       ) // {
-      # Template for easy initialization
       templates = {
         python-fhs-uv-direnv = {
           path = ./.;
