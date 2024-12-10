@@ -72,6 +72,9 @@
                 pkgs.uv
                 nix-ld.packages.${system}.nix-ld
                 pkgs.direnv
+                pkgs.python311Packages.pip
+                pkgs.python311Packages.numpy
+                pkgs.python311Packages.virtualenv
               ];
 
               shellHook = ''
