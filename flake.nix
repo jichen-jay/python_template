@@ -17,9 +17,10 @@
           };
 
           # Step 1: Build the FHS environment (similar to your myFhs)
-          myFhs = pkgs.buildFHSEnv {
+          myFhs = pkgs.buildFHSUserEnv {
             name = "fhs-python-env";
             targetPkgs = pkgs: (with pkgs; [
+              python311
               uv
             ]);
 
@@ -33,6 +34,7 @@
 
         in
         {
+          # Expose the FHS environment as a package (optional)
           packages.myFhs = myFhs;
           packages.direnv = pkgs.direnv;
           packages.default = myFhs;
@@ -73,7 +75,7 @@
                 # Create virtual environment using uv from myFhs
                 if [[ ! -d .venv ]]; then
                   echo "Creating virtual environment..."
-                  ${myFhs}/bin/uv venv .venv
+                  ${pkgs.uv}/bin/uv venv .venv
                   echo ".venv" >> .gitignore
                 fi
 
@@ -96,4 +98,3 @@
       };
     };
 }
-
