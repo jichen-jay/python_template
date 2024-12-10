@@ -4,10 +4,8 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    uv = {
-      url = "github:astral-sh/uv/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    uv.url = "github:astral-sh/uv/v0.5.6"; # Use a specific version for better reproducibility
+    uv.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -35,20 +33,21 @@
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               python311
-
+              # Use uv package from the input
               uv.packages.${system}.default
             ];
 
             shellHook = ''
               echo "Creating virtual environment..."
-              uv venv .venv
+              # Call uv through its binary path
+              ${uv.packages.${system}.default}/bin/uv venv .venv
               echo "Activating virtual environment..."
               source .venv/bin/activate
               echo "Installing specific CPU-only PyTorch wheels..."
-              uv pip install https://download.pytorch.org/whl/cpu/torch-2.1.2%2Bcpu-cp311-cp311-linux_x86_64.whl
-              uv pip install https://download.pytorch.org/whl/cpu/torchvision-0.16.2%2Bcpu-cp311-cp311-linux_x86_64.whl
+              ${uv.packages.${system}.default}/bin/uv pip install https://download.pytorch.org/whl/cpu/torch-2.1.2%2Bcpu-cp311-cp311-linux_x86_64.whl
+              ${uv.packages.${system}.default}/bin/uv pip install https://download.pytorch.org/whl/cpu/torchvision-0.16.2%2Bcpu-cp311-cp311-linux_x86_64.whl
               echo "Installing dependencies from requirements.txt (if any)..."
-              uv pip install -r requirements.txt || true
+              ${uv.packages.${system}.default}/bin/uv pip install -r requirements.txt || true
               echo "Environment setup complete!"
             '';
           };
