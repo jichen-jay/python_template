@@ -18,7 +18,6 @@
 
           python-fhs-env = pkgs.buildFHSEnv {
             name = "python-fhs-env";
-            targetPkgs = pkgs: [ pkgs.python311 ];
             profileSetup = ''
               export NIX_LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib
               export NIX_LD_LIBRARY_PATH+=${pkgs.zlib}/lib
