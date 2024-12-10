@@ -52,6 +52,9 @@
               python-fhs-env
               # ... other tools
             ];
+
+            # Add this line to prevent auto-activation of the virtual environment
+            VIRTUAL_ENV_DISABLE_PROMPT = "1";
           };
         }) // {
       # Put the templates outside `eachDefaultSystem` to make it available to `nix flake init -t`
