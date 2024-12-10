@@ -1,8 +1,9 @@
+# flake.nix
 {
-  description = "Template for Python Development Environment (FHS, uv, direnv)";
+  description = "Python development environment with FHS, uv, and direnv";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable"; # Consider pinning to a stable release
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -15,18 +16,11 @@
             config.allowUnfree = true;
           };
 
-          # FHS Environment setup directly in flake.nix
           python-fhs-env = pkgs.buildFHSEnv {
             name = "python-fhs-env";
-            targetPkgs = pkgs: (with pkgs; [
-              python311
-              # (Optional) any other packages you need in the FHS environment
-            ]);
-
-            # Adjust library paths as needed. Also take suggestions from "nix-ld --list"
+            targetPkgs = pkgs: [ pkgs.python311 ];
             profileSetup = ''
               export NIX_LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib
-              # Add other Linux-specific libraries
               export NIX_LD_LIBRARY_PATH+=${pkgs.zlib}/lib
               export NIX_LD_LIBRARY_PATH+=${pkgs.openssl}/lib
               export NIX_LD_LIBRARY_PATH+=${pkgs.bzip2}/lib
@@ -35,29 +29,33 @@
               export NIX_LD_LIBRARY_PATH+=${pkgs.readline}/lib
               export NIX_LD_LIBRARY_PATH+=${pkgs.xz}/lib
             '';
-
-            runScript = "bash"; # Or your preferred shell
+            runScript = "bash";
           };
         in
         {
-          packages.default = python-fhs-env;
-
           devShells.default = pkgs.mkShell {
-            # Inherit the FHS environment
-            inputsFrom = [ python-fhs-env ];
+            packages = [ python-fhs-env pkgs.uv ];
 
-            # Other development tools
-            packages = with pkgs; [
-              uv
-              python-fhs-env
-              # ... other tools
-            ];
+            # Setup direnv and the virtual environment AFTER the FHS environment
+            shellHook = ''
+              # Set up direnv
+              eval "$(direnv hook bash)"
 
-            # Add this line to prevent auto-activation of the virtual environment
-            VIRTUAL_ENV_DISABLE_PROMPT = "1";
+              # Now that we are INSIDE the FHS environment, create and activate the virtual environment
+              if [[ ! -d .venv ]]; then
+                echo "Creating virtual environment..."
+                uv venv .venv
+                echo ".venv" >> .gitignore
+              fi
+
+              # Activate the virtual environment
+              source .venv/bin/activate
+
+              # Further setup or commands can go here
+            '';
           };
         }) // {
-      # Put the templates outside `eachDefaultSystem` to make it available to `nix flake init -t`
+      # Templates
       templates = {
         python-fhs-uv-direnv = {
           path = ./.;
@@ -68,5 +66,4 @@
         };
         default = self.templates.python-fhs-uv-direnv;
       };
-    };
-}
+    }
