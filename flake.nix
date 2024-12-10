@@ -33,15 +33,20 @@
           };
         in
         {
+          packages.python-fhs = python-fhs-env;
+          packages.uv = pkgs.uv;
+          packages.direnv = pkgs.direnv;
+          packages.default = pkgs.writeShellScriptBin "init" ./init.sh;
+
           devShells.default = pkgs.mkShell {
-            packages = [ python-fhs-env pkgs.uv ];
-
-            # Setup direnv and the virtual environment AFTER the FHS environment
+            buildInputs = [
+              pkgs.direnv
+              python-fhs-env
+              pkgs.uv
+            ];
             shellHook = ''
-              # Set up direnv
-              eval "$(direnv hook bash)"
-
-              # Now that we are INSIDE the FHS environment, create and activate the virtual environment
+              eval "$(direnv hook $0)"
+              # Create the virtual environment using uv
               if [[ ! -d .venv ]]; then
                 echo "Creating virtual environment..."
                 uv venv .venv
@@ -50,20 +55,7 @@
 
               # Activate the virtual environment
               source .venv/bin/activate
-
-              # Further setup or commands can go here
             '';
           };
-        }) // {
-      # Templates
-      templates = {
-        python-fhs-uv-direnv = {
-          path = ./.;
-          description = "Python development environment with FHS, uv, and direnv";
-          welcomeText = ''
-            # Python Development Environment (FHS, uv, direnv)
-          '';
-        };
-        default = self.templates.python-fhs-uv-direnv;
-      };
-    }
+        });
+}
