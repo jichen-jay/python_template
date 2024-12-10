@@ -4,7 +4,6 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.*.tar.gz";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    systems.url = "github:nix-systems/systems";
     uv = {
       url = "github:astral-sh/uv/main";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -15,12 +14,10 @@
     { self
     , nixpkgs
     , flake-parts
-    , systems
     , uv
     , ...
     } @ inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = import systems;
       perSystem =
         { pkgs
         , lib
@@ -57,7 +54,9 @@
           };
         };
 
+      # Define templates
       templates = {
+        # General Python template
         python-dev = {
           path = ./.;
           description = "Python development environment with PyTorch (CPU) and uv";
