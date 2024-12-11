@@ -16,11 +16,9 @@
             config.allowUnfree = true;
           };
 
-          # FHS environment (only libraries, no Python)
-          myFhs = pkgs.buildFHSUserEnv {
+          myFhs = pkgs.buildFHSEnv {
             name = "fhs-env";
             targetPkgs = pkgs: with pkgs; [
-              # Only libraries required for a dynamically linked Python to run
               stdenv.cc.cc.lib
               zlib
               openssl
@@ -29,6 +27,9 @@
               ncurses
               readline
               xz
+              glib
+              sqlite
+              expat
               python311Full
             ];
             profileHook = ''
@@ -58,6 +59,7 @@
                 glib
                 sqlite
                 expat
+                python311Full
               ];
 
               # Generate LD_LIBRARY_PATH for nix-ld
@@ -80,11 +82,11 @@
                 # pkgs.python311Packages.numpy
                 # pkgs.python311Packages.virtualenv
               ];
+
               shellHook = ''
-                eval "$(direnv hook $0)"
                 export PATH=${myFhs}/bin:$PATH
                 if [ ! -d ".venv" ]; then
-                  uv venv .venv
+                  uv venv -p ${pkgs.python311Full}/bin/python .venv
                 fi
                 source .venv/bin/activate
               '';
