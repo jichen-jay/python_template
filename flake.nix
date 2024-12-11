@@ -16,25 +16,32 @@
             config.allowUnfree = true;
           };
 
+          uvPackage = pkgs.uv.overrideAttrs (oldAttrs: {
+            version = "0.5.8";
+            src = pkgs.fetchurl {
+              url = "https://github.com/astral-sh/uv/releases/download/0.5.8/uv-x86_64-unknown-linux-musl.tar.gz";
+              sha256 = "1hmhh9p7vbrmd541rnkz5ijsrjsn2s9ra59s53wsgjxam7jwj0xm";
+            };
+          });
+
+          commonPackages = with pkgs; [
+            stdenv.cc.cc.lib
+            zlib
+            openssl
+            bzip2
+            libffi
+            ncurses
+            readline
+            xz
+            glib
+            sqlite
+            expat
+            python311Full
+          ];
+
           myFhs = pkgs.buildFHSEnv {
-            name = "fhs-env";
-            targetPkgs = pkgs: with pkgs; [
-              stdenv.cc.cc.lib
-              zlib
-              openssl
-              bzip2
-              libffi
-              ncurses
-              readline
-              xz
-              glib
-              sqlite
-              expat
-              python311Full
-            ];
-            profileHook = ''
-              export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.zlib}/lib:${pkgs.openssl.out}/lib:${pkgs.bzip2}/lib:${pkgs.libffi}/lib:${pkgs.ncurses}/lib:${pkgs.readline}/lib:${pkgs.xz}/lib:$LD_LIBRARY_PATH
-            '';
+            name = "my-fhs";
+            targetPkgs = pkgs: commonPackages;
             runScript = "bash";
           };
 
@@ -46,47 +53,39 @@
 
           devShells.default =
             let
-              # Libraries for nix-ld
-              ldLibraries = with pkgs; [
-                stdenv.cc.cc
-                zlib
-                openssl
-                bzip2
-                libffi
-                ncurses
-                readline
-                xz
-                glib
-                sqlite
-                expat
-                python311Full
-              ];
-
-              # Generate LD_LIBRARY_PATH for nix-ld
-              libPath = pkgs.lib.makeLibraryPath ldLibraries;
-
+              libPath = pkgs.lib.makeLibraryPath commonPackages;
             in
             pkgs.mkShell {
-              # Inherit FHS environment
               inputsFrom = [ myFhs ];
 
-              # Set up nix-ld
+              NIX_PATH = "
+                nixpkgs=${nixpkgs}";
+              PYTHONNOUSERSITE = "1";
+              PYTHONDONTWRITEBYTECODE = "1";
               LD_LIBRARY_PATH = libPath;
 
-              nativeBuildInputs = [
-                pkgs.python311Full
-                pkgs.uv
+              nativeBuildInputs = with pkgs; [
+                python311Full
+                uvPackage
                 nix-ld.packages.${system}.nix-ld
-                pkgs.direnv
-                # pkgs.python311Packages.pip
-                # pkgs.python311Packages.numpy
-                # pkgs.python311Packages.virtualenv
+                direnv
+                black
+                ruff
+                mypy
+                pylint
               ];
 
               shellHook = ''
                 export PATH=${myFhs}/bin:$PATH
+                export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath commonPackages}
+  
+                # Setup UV cache
+                export UV_CACHE_DIR="$PWD/.cache/uv"
+                mkdir -p "$UV_CACHE_DIR"
+  
+                # Create and activate venv if it doesn't exist
                 if [ ! -d ".venv" ]; then
-                  uv venv -p ${pkgs.python311Full}/bin/python .venv
+                  uv venv -p ${pkgs.python311Full}/bin/python .venv --system-site-packages
                 fi
                 source .venv/bin/activate
               '';
