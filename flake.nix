@@ -16,13 +16,20 @@
             config.allowUnfree = true;
           };
 
-          uvPackage = pkgs.uv.overrideAttrs (oldAttrs: {
+          uvPackage = pkgs.stdenv.mkDerivation {
+            pname = "uv";
             version = "0.5.8";
             src = pkgs.fetchurl {
               url = "https://github.com/astral-sh/uv/releases/download/0.5.8/uv-x86_64-unknown-linux-musl.tar.gz";
               sha256 = "1hmhh9p7vbrmd541rnkz5ijsrjsn2s9ra59s53wsgjxam7jwj0xm";
             };
-          });
+
+            installPhase = ''
+              mkdir -p $out/bin
+              cp uv $out/bin/
+              chmod +x $out/bin/uv
+            '';
+          };
 
           commonPackages = with pkgs; [
             stdenv.cc.cc.lib
