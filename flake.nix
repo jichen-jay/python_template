@@ -54,6 +54,9 @@
                 ncurses
                 readline
                 xz
+                glib
+                sqlite
+                expat
               ];
 
               # Generate LD_LIBRARY_PATH for nix-ld
@@ -72,15 +75,17 @@
                 pkgs.uv
                 nix-ld.packages.${system}.nix-ld
                 pkgs.direnv
-                pkgs.python311Packages.pip
-                pkgs.python311Packages.numpy
-                pkgs.python311Packages.virtualenv
+                # pkgs.python311Packages.pip
+                # pkgs.python311Packages.numpy
+                # pkgs.python311Packages.virtualenv
               ];
-
               shellHook = ''
                 eval "$(direnv hook $0)"
-                # Add FHS environment to PATH
                 export PATH=${myFhs}/bin:$PATH
+                if [ ! -d ".venv" ]; then
+                  uv venv .venv
+                fi
+                source .venv/bin/activate
               '';
             };
         }
